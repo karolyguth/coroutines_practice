@@ -1,0 +1,35 @@
+/**
+ * Launching a Coroutine in Kotlin
+ *
+ * =============================
+ *
+ * How to Launch a Coroutine:
+ * ---------------------------
+ * - Use `launch` to start a coroutine that runs independently but follows structured concurrency.
+ * - Coroutines can be launched in different scopes based on the use case:
+ *   - **viewModelScope**: Used in ViewModel to ensure coroutines are canceled when the ViewModel is cleared.
+ *   - **lifecycleScope**: Used in Activity/Fragment to manage coroutines tied to the UI lifecycle.
+ *   - **CoroutineScope**: A custom scope that provides manual control over coroutine lifecycle.
+ *
+ * Example - Using viewModelScope:
+ * --------------------------------
+ * class MyViewModel : ViewModel() {
+ *     fun fetchData() {
+ *         viewModelScope.launch {
+ *             val result = getDataFromNetwork()
+ *             // Update UI state
+ *         }
+ *     }
+ *
+ *     private suspend fun getDataFromNetwork(): String {
+ *         delay(2000) // Simulating network delay
+ *         return "Data fetched"
+ *     }
+ * }
+ *
+ * Summary:
+ * ---------
+ * - Use `launch` to start a coroutine within a structured scope.
+ * - Choose the appropriate scope (viewModelScope, lifecycleScope, or a custom CoroutineScope) based on the lifecycle needs.
+ * - Proper scoping ensures coroutines are canceled when no longer needed, preventing memory leaks.
+ */

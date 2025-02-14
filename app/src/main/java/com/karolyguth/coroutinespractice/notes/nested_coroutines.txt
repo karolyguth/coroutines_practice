@@ -1,0 +1,112 @@
+/**
+ * Nested Coroutines in Kotlin
+ * ==========================
+ *
+ * What are Nested Coroutines?
+ * -------------------------
+ * - Coroutines launched inside other coroutines
+ * - Follow parent-child hierarchy
+ * - Children inherit context from parent
+ * - Parent waits for all children to complete
+ *
+ * Example - Basic Nested Coroutines:
+ * -------------------------------
+ * fun loadUserData() {
+ *     // Parent coroutine
+ *     viewModelScope.launch {
+ *         println("Parent coroutine starts")
+ *
+ *         // First child coroutine
+ *         launch {
+ *             delay(1000)
+ *             println("Child 1: Loading profile")
+ *
+ *             // Nested child coroutine
+ *             launch {
+ *                 delay(500)
+ *                 println("Grandchild: Loading profile details")
+ *             }
+ *         }
+ *
+ *         // Second child coroutine
+ *         launch {
+ *             delay(800)
+ *             println("Child 2: Loading settings")
+ *         }
+ *
+ *         println("Parent coroutine continues")
+ *     }
+ * }
+ *
+ * Example - Error Handling in Nested Coroutines:
+ * ------------------------------------------
+ * fun handleNestedTasks() {
+ *     viewModelScope.launch {
+ *         try {
+ *             println("Parent: Starting work")
+ *
+ *             launch {
+ *                 try {
+ *                     println("Child 1: Starting")
+ *                     throw Exception("Child 1 failed")
+ *                 } catch (e: Exception) {
+ *                     println("Child 1: Handled error")
+ *                 }
+ *             }
+ *
+ *             launch {
+ *                 println("Child 2: Working")
+ *                 launch {
+ *                     println("Grandchild: Doing nested work")
+ *                 }
+ *             }
+ *
+ *         } catch (e: Exception) {
+ *             println("Parent: Handled error")
+ *         }
+ *     }
+ * }
+ *
+ * Key Points About Nested Coroutines:
+ * --------------------------------
+ * - Parent coroutine won't complete until all children complete
+ * - Cancelling parent cancels all children
+ * - Each level can handle its own exceptions
+ * - Children inherit CoroutineContext from parent
+ * - Ideal for tasks that logically belong together
+ *
+ * Common Use Case:
+ * --------------
+ * fun refreshUserDashboard() {
+ *     viewModelScope.launch {
+ *         showLoading()
+ *
+ *         // Child coroutine for profile
+ *         launch {
+ *             val profile = loadProfile()
+ *             // Nested coroutine for profile details
+ *             launch {
+ *                 loadProfileDetails(profile.id)
+ *             }
+ *         }
+ *
+ *         // Child coroutine for notifications
+ *         launch {
+ *             loadNotifications()
+ *             // Nested coroutine for notification details
+ *             launch {
+ *                 loadUnreadCount()
+ *             }
+ *         }
+ *
+ *         hideLoading()
+ *     }
+ * }
+ *
+ * Execution Order Note:
+ * -------------------
+ * - Parent coroutine code executes sequentially
+ * - Child coroutines run concurrently with each other
+ * - Each child's code executes sequentially
+ * - Parent waits for ALL nested coroutines to complete
+ */

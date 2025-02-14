@@ -1,0 +1,29 @@
+/**
+ * Concurrency vs. Parallelism in Kotlin Coroutines
+ *
+ * =============================
+ *
+ * Key Differences:
+ * -----------------
+ * - Concurrency: Managing multiple tasks at the same time but not necessarily executing them simultaneously.
+ * - Parallelism: Executing multiple tasks truly at the same time, usually using multiple CPU cores.
+ *
+ * Real-Life Analogy:
+ * -------------------
+ * - Concurrency: A single chef preparing multiple dishes by switching between tasks (chopping vegetables,
+ *   stirring sauce, checking the oven), but only doing one at a time.
+ * - Parallelism: Multiple chefs working on different dishes at the same time—one chopping, one stirring,
+ *   and one handling the oven.
+ *
+ * How This Applies to Kotlin Coroutines:
+ * --------------------------------------
+ * - Coroutines provide concurrency by allowing tasks to be interleaved efficiently within a single thread.
+ * - To achieve parallelism, coroutines must explicitly run on multiple threads using appropriate Dispatchers
+ *   (e.g., Dispatchers.IO or Dispatchers.Default).
+ *
+ * - Launching two separate coroutines mean effectively running code in parallel (meaning on different threads)
+ *
+ *
+ */
+
+

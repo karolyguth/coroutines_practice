@@ -1,0 +1,53 @@
+/**
+ * Suspend Functions in Kotlin
+ *
+ * =============================
+ *
+ * What is a Suspend Function?
+ * ---------------------------
+ * - A function marked with `suspend` that can be paused and resumed later
+ * - Used within coroutines to handle long-running or asynchronous tasks without blocking threads
+ * - Can only be called from another suspend function or within a coroutine
+ * - Automatically handles context switching between threads
+ *
+ * Example - Basic Suspend Function:
+ * ----------------------------------
+ * suspend fun fetchData(): String {
+ *     delay(2000) // Simulates a network request
+ *     return "Data fetched"
+ * }
+ *
+ * How to Call a Suspend Function:
+ * -------------------------------
+ * - Inside a coroutine using `launch` or `async`
+ * - From another suspend function
+ * - Using coroutineScope builder
+ *
+ * Example - Different Ways to Call:
+ * -------------------------------------
+ * // In ViewModel
+ * class MyViewModel : ViewModel() {
+ *     fun loadData() {
+ *         viewModelScope.launch {
+ *             val result = fetchData()
+ *             // Update UI with result
+ *         }
+ *     }
+ * }
+ *
+ * // Using coroutineScope
+ * suspend fun performTasks() = coroutineScope {
+ *     val result1 = async { fetchData() }
+ *     val result2 = async { fetchMoreData() }
+ *     result1.await() + result2.await()
+ * }
+ *
+ * Key Points:
+ * -----------
+ * - Suspend functions do not block the thread they run on
+ * - They can be used with structured concurrency to manage background work efficiently
+ * - Use `withContext(Dispatchers.IO)` for heavy operations like network or database calls
+ * - Suspension points are only possible at function calls marked with `suspend`
+ * - Can contain regular code along with suspending code
+ * - Cannot be used in callback-based APIs directly
+ */
