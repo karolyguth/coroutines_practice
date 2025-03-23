@@ -1,0 +1,161 @@
+/**
+ * Jobs and Deferreds in Kotlin Coroutines
+ *
+ * =============================
+ *
+ * What is a Job?
+ * -------------
+ * - A Job represents a cancellable piece of work with a lifecycle
+ * - Each coroutine creates a Job
+ * - Used to manage the coroutine's lifecycle, track its state, and handle cancellation
+ * - Can form parent-child hierarchies (structured concurrency)
+ *
+ * Job States:
+ * ----------
+ * 1. New - Job created but not started
+ * 2. Active - Job is running
+ * 3. Completing - Job is running its final steps
+ * 4. Completed - Job has successfully finished
+ * 5. Cancelling - Job is being cancelled
+ * 6. Cancelled - Job has been cancelled
+ *
+ * Example - Measuring Job Execution Time:
+ * ------------------------------------
+ * fun measureJobs() {
+ *     viewModelScope.launch {
+ *         val time = measureTimeMillis {
+ *             // Create first job
+ *             val job1 = launch {
+ *                 println("Job 1 started")
+ *                 delay(2000) // Simulates work taking 2 seconds
+ *                 println("Job 1 completed")
+ *             }
+ *
+ *             // Create second job
+ *             val job2 = launch {
+ *                 println("Job 2 started")
+ *                 delay(3000) // Simulates work taking 3 seconds
+ *                 println("Job 2 completed")
+ *             }
+ *
+ *             // Wait for both jobs to complete
+ *             println("Waiting for jobs to complete...")
+ *             job1.join() // Suspends until job1 completes
+ *             job2.join() // Suspends until job2 completes
+ *             println("All jobs completed")
+ *         }
+ *
+ *         println("Total execution time: $time ms")
+ *         // This will print approximately 3000ms, not 5000ms
+ *         // because jobs ran concurrently
+ *     }
+ * }
+ *
+ * Job Methods:
+ * -----------
+ * - job.isActive: Boolean - Whether job is active
+ * - job.isCancelled: Boolean - Whether job is cancelled
+ * - job.isCompleted: Boolean - Whether job is completed (successfully or not)
+ * - job.cancel() - Cancels the job with optional cause
+ * - job.join() - Suspends until job completes (successful or cancelled)
+ * - job.children - Returns job's immediate children
+ * - job.cancelChildren() - Cancels all children without touching parent
+ *
+ * Example - Job Hierarchy:
+ * ---------------------
+ * fun jobHierarchy() {
+ *     val parentJob = viewModelScope.launch {
+ *         // Parent job
+ *         println("Parent started")
+ *
+ *         // Child jobs
+ *         val child1 = launch {
+ *             delay(1000)
+ *             println("Child 1 completed")
+ *         }
+ *
+ *         val child2 = launch {
+ *             delay(2000)
+ *             println("Child 2 completed")
+ *         }
+ *
+ *         println("Parent waiting for children")
+ *     }
+ *
+ *     // Cancelling parent will cancel all children
+ *     viewModelScope.launch {
+ *         delay(500)
+ *         parentJob.cancel()
+ *         println("Parent and all children cancelled")
+ *     }
+ * }
+ *
+ * What is a Deferred?
+ * -----------------
+ * - A Deferred is a Job that produces a result
+ * - Created using the async coroutine builder
+ * - Has all properties of a Job, plus the ability to await its result
+ * - Similar to Future/Promise in other languages
+ *
+ * Example - Using Deferreds:
+ * -----------------------
+ * fun fetchUserData() {
+ *     viewModelScope.launch {
+ *         // Create a deferred
+ *         val userDeferred = viewModelScope.async {
+ *             delay(1000) // Simulate network call
+ *             "User data"
+ *         }
+ *
+ *         // Do other work while waiting
+ *         println("Doing other work")
+ *
+ *         try {
+ *             // Get the result (suspends until result is ready)
+ *             val userData = userDeferred.await()
+ *             println("User data received: $userData")
+ *         } catch (e: Exception) {
+ *             println("Error fetching user data: ${e.message}")
+ *         }
+ *     }
+ * }
+ *
+ * Deferred Methods:
+ * ---------------
+ * - deferred.await() - Suspends until result is ready and returns it
+ * - All other Job methods (isActive, cancel, etc.)
+ *
+ * Error Handling with Jobs and Deferreds:
+ * ------------------------------------
+ * fun errorHandling() {
+ *     viewModelScope.launch {
+ *         try {
+ *             val job = launch {
+ *                 throw RuntimeException("Job failed")
+ *             }
+ *             job.join() // Exception from job will propagate here
+ *         } catch (e: Exception) {
+ *             println("Caught job exception: ${e.message}")
+ *         }
+ *
+ *         try {
+ *             val deferred = async {
+ *                 throw RuntimeException("Deferred failed")
+ *             }
+ *             // await() will throw the exception
+ *             deferred.await()
+ *         } catch (e: Exception) {
+ *             println("Caught deferred exception: ${e.message}")
+ *         }
+ *     }
+ * }
+ *
+ * Key Points:
+ * ----------
+ * - Every coroutine has an associated Job
+ * - Cancelling a Job cancels the coroutine
+ * - Parent Job cancellation cancels all child Jobs
+ * - Exceptions in child Jobs propagate to parent by default
+ * - Use async/Deferred when you need to return a result
+ * - Exceptions in Deferred are thrown when await() is called
+ */

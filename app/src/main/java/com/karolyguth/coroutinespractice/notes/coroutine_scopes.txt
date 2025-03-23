@@ -1,0 +1,112 @@
+/**
+ * Coroutine Scopes in Kotlin
+ *
+ * =============================
+ *
+ * What are Coroutine Scopes?
+ * ---------------------------
+ * - Delimit the lifetime of coroutines, tie coroutines to a specific lifecycle
+ * - Define a boundary for coroutine cancellation and failure
+ * - Tie coroutines to a specific lifecycle (e.g., Activity, ViewModel)
+ * - Enable structured concurrency by creating parent-child relationships
+ *
+ * Standard Scope Types:
+ * --------------------
+ * 1. GlobalScope
+ *    - Application-level scope
+ *    - NOT recommended (can cause memory leaks)
+ *    - Coroutines live as long as the application runs
+ *
+ * 2. viewModelScope
+ *    - Tied to ViewModel lifecycle
+ *    - Automatically cancelled when ViewModel is cleared
+ *    - Available in androidx.lifecycle:lifecycle-viewmodel-ktx
+ *
+ * 3. lifecycleScope
+ *    - Tied to Android Lifecycle
+ *    - Cancelled when lifecycle is destroyed
+ *    - Available in androidx.lifecycle:lifecycle-runtime-ktx
+ *
+ * 4. Custom scopes created with CoroutineScope()
+ *    - Created for specific use cases
+ *    - Must be manually cancelled to prevent leaks
+ *
+ * Example - Using viewModelScope:
+ * ------------------------------
+ * class UserViewModel : ViewModel() {
+ *     fun loadUser(userId: String) {
+ *         viewModelScope.launch {
+ *             val user = userRepository.getUser(userId)
+ *             _userLiveData.value = user
+ *         }
+ *     } // Cancelled automatically when ViewModel is cleared
+ * }
+ *
+ * Example - Using lifecycleScope:
+ * -----------------------------
+ * class MainActivity : AppCompatActivity() {
+ *     override fun onCreate(savedInstanceState: Bundle?) {
+ *         super.onCreate(savedInstanceState)
+ *         setContentView(R.layout.activity_main)
+ *
+ *         lifecycleScope.launch {
+ *             // This coroutine is cancelled when activity is destroyed
+ *             loadData()
+ *         }
+ *
+ *         // or with specific lifecycle state
+ *         lifecycleScope.launchWhenResumed {
+ *             // Only runs when activity is in RESUMED state
+ *             updateUI()
+ *         }
+ *     }
+ * }
+ *
+ * Creating a Custom Scope:
+ * ----------------------
+ * class Repository {
+ *     // Create custom scope with dispatcher
+ *     private val scope = CoroutineScope(Dispatchers.IO)
+ *
+ *     fun fetchData() {
+ *         scope.launch {
+ *             // Long-running operation
+ *         }
+ *     }
+ *
+ *     fun cleanup() {
+ *         // Important: Must cancel scope to prevent leaks
+ *         scope.cancel()
+ *     }
+ * }
+ *
+ * Scope Builders:
+ * -------------
+ * 1. coroutineScope { }
+ *    - Creates child scope that inherits context
+ *    - Waits for all children to complete
+ *    - Propagates cancellation bi-directionally
+ *    - Is a suspending function (unlike others)
+ *
+ * 2. supervisorScope { }
+ *    - Children failure doesn't affect siblings
+ *    - Is a suspending function
+ *
+ * Example - Using Scope Builders:
+ * ----------------------------
+ * suspend fun loadDashboard() = coroutineScope {
+ *     // Creates a new scope and suspends until all complete
+ *     launch { loadProfile() }
+ *     launch { loadFeed() }
+ * }
+ *
+ * Key Points About Scopes:
+ * ---------------------
+ * - Always use appropriate scope for the component lifecycle
+ * - Never use GlobalScope in production code
+ * - Custom scopes must be manually cancelled
+ * - Child coroutines inherit parent's scope context
+ * - Scope cancellation immediately cancels all work in progress
+ * - LaunchedEffect in Compose creates scoped coroutines
+ */
+

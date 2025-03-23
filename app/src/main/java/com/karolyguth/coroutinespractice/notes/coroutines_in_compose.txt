@@ -1,0 +1,155 @@
+/**
+ * Coroutines in Jetpack Compose
+ *
+ * =============================
+ *
+ * Key Coroutine Components in Compose:
+ * ----------------------------------
+ * - LaunchedEffect: Runs suspending code in a coroutine tied to the composition
+ * - rememberCoroutineScope: Returns a coroutine scope bound to the composition
+ * - rememberUpdatedState: Captures a value in a way that's safe for coroutines to reference
+ * - DisposableEffect: Performs cleanup when leaving composition
+ * - produceState: Produces a state that updates based on suspending operations
+ * - derivedStateOf: Efficiently computes a derived state that updates when source state changes
+ *
+ * LaunchedEffect:
+ * -------------
+ * - Launches a coroutine when entering composition and cancels it when leaving
+ * - Restarts when key parameters change
+ * - Perfect for one-time or key-dependent side effects
+ *
+ * Example - LaunchedEffect:
+ * ----------------------
+ * @Composable
+ * fun UserProfile(userId: String) {
+ *     var user by remember { mutableStateOf<User?>(null) }
+ *
+ *     // This coroutine is tied to this composition
+ *     // Relaunched whenever userId changes
+ *     LaunchedEffect(userId) {
+ *         val fetchedUser = userRepository.fetchUser(userId)
+ *         user = fetchedUser
+ *     }
+ *
+ *     // UI code here
+ * }
+ *
+ * rememberCoroutineScope:
+ * --------------------
+ * - Returns a coroutine scope bound to the calling composable
+ * - Cancelled when the composable leaves composition
+ * - Used for starting coroutines from event handlers
+ *
+ * Example - rememberCoroutineScope:
+ * -----------------------------
+ * @Composable
+ * fun SaveButton(onSave: suspend () -> Result) {
+ *     // Get a scope that's bound to this composition
+ *     val scope = rememberCoroutineScope()
+ *
+ *     Button(
+ *         onClick = {
+ *             // Launch coroutine from event handler
+ *             scope.launch {
+ *                 val result = onSave()
+ *                 // Handle result
+ *             }
+ *         }
+ *     ) {
+ *         Text("Save")
+ *     }
+ * }
+ *
+ * rememberUpdatedState:
+ * ------------------
+ * - Captures a value for use in long-lived effects
+ * - Ensures closure references the latest value when the parameter changes
+ * - Used when you don't want to restart an effect for a certain parameter
+ *
+ * Example - rememberUpdatedState:
+ * ---------------------------
+ * @Composable
+ * fun AutoSave(onSave: () -> Unit) {
+ *     // Always reference latest onSave, even if the effect doesn't restart
+ *     val currentOnSave = rememberUpdatedState(onSave)
+ *
+ *     // This effect doesn't restart when onSave changes
+ *     LaunchedEffect(Unit) {
+ *         while (true) {
+ *             delay(5000) // Save every 5 seconds
+ *             currentOnSave.value() // Always calls the current onSave function
+ *         }
+ *     }
+ * }
+ *
+ * produceState:
+ * -----------
+ * - Creates State<T> from a suspending producer function
+ * - Updates state whenever the producer yields new values
+ * - Automatically handles lifecycle and cancellation
+ *
+ * Example - produceState:
+ * --------------------
+ * @Composable
+ * fun NetworkImage(url: String) {
+ *     // Produces loading state from network operation
+ *     val imageState = produceState<ImageState>(initialValue = ImageState.Loading, url) {
+ *         value = ImageState.Loading
+ *         try {
+ *             val image = loadNetworkImage(url)
+ *             value = ImageState.Success(image)
+ *         } catch (e: Exception) {
+ *             value = ImageState.Error(e)
+ *         }
+ *     }
+ *
+ *     // Display based on state
+ *     when (val state = imageState.value) {
+ *         is ImageState.Loading -> LoadingIndicator()
+ *         is ImageState.Success -> Image(bitmap = state.image)
+ *         is ImageState.Error -> ErrorMessage(state.exception)
+ *     }
+ * }
+ *
+ * Common Patterns:
+ * -------------
+ * 1. One-shot Operations:
+ * ```
+ * LaunchedEffect(key) {
+ *     // Do one-time setup based on key
+ * }
+ * ```
+ *
+ * 2. Event Handling:
+ * ```
+ * val scope = rememberCoroutineScope()
+ * Button(onClick = { scope.launch { handleClick() } })
+ * ```
+ *
+ * 3. Observing Flows:
+ * ```
+ * LaunchedEffect(key) {
+ *     userFlow.collect { user ->
+ *         // Update UI with user
+ *     }
+ * }
+ * ```
+ *
+ * 4. Lifecycle-Aware Processing:
+ * ```
+ * LaunchedEffect(Unit) {
+ *     snapshotFlow { state.value }
+ *         .filter { it > threshold }
+ *         .collect { logger.log("Threshold exceeded: $it") }
+ * }
+ * ```
+ *
+ * Best Practices:
+ * -------------
+ * - Always use the Compose coroutine utilities rather than creating scopes manually
+ * - Prefer LaunchedEffect for side effects instead of direct coroutine launches
+ * - Be thoughtful about keys used in LaunchedEffect to control recomposition
+ * - Use rememberUpdatedState for references inside long-lived effects
+ * - Cancel operations (with DisposableEffect) if they should not run when leaving composition
+ * - Avoid using GlobalScope or unbound coroutine scopes
+ */

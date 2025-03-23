@@ -4,6 +4,7 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import com.karolyguth.coroutinespractice.assignments.coroutinebasics.presentation.CoroutineBasicsScreen
 import com.karolyguth.coroutinespractice.ui.theme.CoroutinesPracticeTheme
 import com.karolyguth.coroutinespractice.util.screens.CounterScreen
 import com.karolyguth.coroutinespractice.util.screens.RotatingBoxScreen
@@ -25,7 +26,7 @@ class MainActivity : ComponentActivity() {
 
         setContent {
             CoroutinesPracticeTheme {
-                RotatingBoxScreen()
+                CoroutineBasicsScreen()
             }
         }
     }

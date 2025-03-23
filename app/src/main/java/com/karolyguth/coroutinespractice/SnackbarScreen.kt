@@ -24,12 +24,12 @@ fun SnackbarScreen() {
 
 
     Scaffold(
-        snackbarHost = { SnackbarHost(snackbarHostState) }
-
+        snackbarHost = {
+            SnackbarHost(snackbarHostState)
+        }
 
     ) { innerPadding ->
         Box(modifier = Modifier.padding(innerPadding), contentAlignment = Alignment.Center) {
-
 
         }
     }
