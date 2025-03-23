@@ -31,13 +31,7 @@ fun BirdSection(modifier: Modifier = Modifier, bird: Bird?) {
     LaunchedEffect(key1 = bird) {
         val job1 = launch {
             while (true) {
-                bird?.number?.let { Log.d("BirdSection", it.name) }
-                delay(1000)
-            }
-        }
-        val job2 = launch {
-            while (true) {
-                bird?.name?.let { Log.d("BirdSection", it) }
+                bird?.sound?.let { Log.d("BirdSection", it.name) }
                 delay(1000)
             }
         }

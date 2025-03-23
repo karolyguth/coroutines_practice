@@ -1,0 +1,447 @@
+/**
+ * Coroutine Contexts in Kotlin
+ *
+ * =============================
+ *
+ * What are coroutine contexts?
+ * ---------------------------
+ * - CoroutineContext is an indexed set of Element instances, where each Element has a unique Key
+ * - Acts as a persistent, immutable collection of coroutine execution aspects/metadata
+ * - Determines how coroutines execute (where, with what parameters, under what conditions)
+ * - Each coroutine has its own context that follows it throughout its lifetime
+ *
+ * Main elements of CoroutineContext
+ * --------------------------------
+ * - Job: Controls the lifecycle of the coroutine
+ * - CoroutineDispatcher: Determines what thread(s) the coroutine runs on
+ * - CoroutineName: Assigns a name to the coroutine (useful for debugging)
+ * - CoroutineExceptionHandler: Handles uncaught exceptions
+ *
+ * Example - Creating and Accessing Contexts:
+ * ----------------------------------------
+ * viewModelScope.launch(Dispatchers.Default + CoroutineName("DataProcessor")) {
+ *     // Access the current coroutine's context
+ *     val currentContext = coroutineContext
+ *
+ *     // Access specific elements from the context
+ *     val myDispatcher = currentContext[CoroutineDispatcher]
+ *     val myCoroutineName = currentContext[CoroutineName]
+ *     val myJob = currentContext[Job]
+ *
+ *     println("Running on dispatcher: $myDispatcher")
+ *     println("Coroutine name: ${myCoroutineName?.name}")
+ *     println("Job: $myJob")
+ * }
+ *
+ * Relationship Between Coroutine Contexts and Scopes
+ * -----------------------------------------------
+ * - CoroutineScope: Defines the lifetime boundaries for coroutines
+ * - CoroutineContext: Defines how and where coroutines execute
+ * - Every CoroutineScope has a CoroutineContext (scope.coroutineContext)
+ * - When you launch a coroutine in a scope, it inherits the scope's context by default
+ * - Contexts can be overridden when launching within a scope
+ *
+ * Example - Scope and Context Relationship:
+ * ---------------------------------------
+ * // Creating a scope with a specific context
+ * val scope = CoroutineScope(Dispatchers.Default + SupervisorJob() + CoroutineName("MyScope"))
+ *
+ * // Launching inherits the scope's context
+ * scope.launch {
+ *     // This coroutine runs with Dispatchers.Default, SupervisorJob, and "MyScope" name
+ *     println("Context elements: ${coroutineContext[CoroutineName]}, ${coroutineContext[CoroutineDispatcher]}")
+ *
+ *     // Can override parts of the context when launching child coroutines
+ *     launch(Dispatchers.IO) {
+ *         // This uses Dispatchers.IO but still inherits SupervisorJob and "MyScope" name
+ *     }
+ * }
+ *
+ * How Android Lifecycle Scopes Handle Context
+ * ----------------------------------------
+ * - lifecycleScope: Tied to Activity/Fragment lifecycle, uses Dispatchers.Main by default
+ * - viewModelScope: Tied to ViewModel lifecycle, uses Dispatchers.Main by default
+ * - Both can have their context elements overridden when launching coroutines
+ *
+ * Example - Overriding Context in Standard Scopes:
+ * ---------------------------------------------
+ * // In Activity
+ * lifecycleScope.launch {
+ *     // By default runs on Main dispatcher
+ *     println("Default thread: ${Thread.currentThread().name}") // Main thread
+ *
+ *     // Override with IO dispatcher for background work
+ *     withContext(Dispatchers.IO) {
+ *         println("IO thread: ${Thread.currentThread().name}") // Background thread
+ *     }
+ * }
+ *
+ * // In ViewModel
+ * viewModelScope.launch(Dispatchers.Default + CoroutineName("Calculator")) {
+ *     // Override the default Main dispatcher with Default
+ *     // Also add a name for debugging
+ *     calculateComplexData()
+ * }
+ *
+ * Context Inheritance in Nested Scopes
+ * ----------------------------------
+ * - Child scopes inherit context from parent scopes
+ * - coroutineScope {} and supervisorScope {} builders create child scopes
+ * - The child scope inherits the context from the surrounding coroutine
+ *
+ * Example - Context Flow in Nested Scopes:
+ * -------------------------------------
+ * viewModelScope.launch(Dispatchers.IO + CoroutineName("Parent")) {
+ *     println("Parent context: $coroutineContext")
+ *
+ *     // Create a new scope that inherits context
+ *     coroutineScope {
+ *         println("Child scope context: $coroutineContext") // Has IO dispatcher and Parent name
+ *
+ *         // Override context in this scope
+ *         withContext(Dispatchers.Default) {
+ *             println("New context: $coroutineContext") // Has Default dispatcher but Parent name
+ *         }
+ *     }
+ * }
+ *
+ * Built-in Dispatchers
+ * -------------------
+ * - Dispatchers.Default: For CPU-intensive tasks (backed by thread pool with core count threads)
+ * - Dispatchers.IO: For I/O-bound tasks (network, file operations) (shared pool optimized for I/O)
+ * - Dispatchers.Main: For UI operations (Android main thread)
+ * - Dispatchers.Unconfined: Starts in caller thread, may change after suspension point
+ *
+ * Example - Using Different Dispatchers:
+ * ------------------------------------
+ * suspend fun loadUserData(): UserData {
+ *     // Start with network operation on IO dispatcher
+ *     val userData = withContext(Dispatchers.IO) {
+ *         api.fetchUserFromNetwork()
+ *     }
+ *
+ *     // Process data on Default dispatcher
+ *     val processedData = withContext(Dispatchers.Default) {
+ *         processUserData(userData)
+ *     }
+ *
+ *     // Update UI on Main dispatcher
+ *     return withContext(Dispatchers.Main) {
+ *         updateUI(processedData)
+ *         processedData
+ *     }
+ * }
+ *
+ * Context Combination
+ * ------------------
+ * - Contexts can be combined using the + operator
+ * - Later elements with the same key override earlier ones
+ * - Used to create custom execution configurations
+ *
+ * Example - Combining Contexts:
+ * ---------------------------
+ * // Create a custom context
+ * val customContext = Dispatchers.IO + CoroutineName("NetworkCall") + SupervisorJob()
+ *
+ * // Use the combined context
+ * viewModelScope.launch(customContext) {
+ *     // This coroutine runs on IO dispatcher with a custom name and supervisor job
+ *     val user = api.fetchUser()
+ * }
+ *
+ * // Overriding elements
+ * val newContext = customContext + Dispatchers.Default // This will override IO with Default
+ *
+ * Context Inheritance
+ * -----------------
+ * - Child coroutines inherit context from their parent
+ * - Child can override specific elements of the inherited context
+ * - Following structured concurrency principles
+ *
+ * Example - Context Inheritance:
+ * ----------------------------
+ * // Parent coroutine with specific context
+ * viewModelScope.launch(Dispatchers.Default + CoroutineName("Parent")) {
+ *     // Child inherits parent context but overrides name
+ *     launch(CoroutineName("Child")) {
+ *         // This runs on Default dispatcher inherited from parent
+ *         // But has its own name "Child"
+ *         println("Child context: ${coroutineContext[CoroutineDispatcher]}")
+ *         println("Child name: ${coroutineContext[CoroutineName]?.name}")
+ *     }
+ *
+ *     // This child inherits everything from parent
+ *     launch {
+ *         println("Unnamed child name: ${coroutineContext[CoroutineName]?.name}")
+ *         // Will print "Parent"
+ *     }
+ * }
+ *
+ * The withContext() Function
+ * ------------------------
+ * - Temporarily changes context for a suspend block
+ * - Returns result of the block
+ * - Suspends until completion
+ * - Ideal for switching dispatchers
+ *
+ * Example - Using withContext():
+ * ----------------------------
+ * viewModelScope.launch {
+ *     // Initial context (Default if not specified)
+ *     val initialThread = Thread.currentThread().name
+ *     println("Initial thread: $initialThread")
+ *
+ *     // Switch to IO for network operation
+ *     val result = withContext(Dispatchers.IO) {
+ *         println("IO thread: ${Thread.currentThread().name}")
+ *         // Simulating network call
+ *         delay(1000)
+ *         "Network result"
+ *     }
+ *
+ *     // Back to initial context
+ *     println("Back to thread: ${Thread.currentThread().name}")
+ *     println("Result: $result")
+ * }
+ *
+ * CoroutineExceptionHandler
+ * -----------------------
+ * - Handles uncaught exceptions in coroutines
+ * - Only works for root coroutines (not propagated to child coroutines)
+ * - Must be included in the context when coroutine is launched
+ *
+ * Example - Exception Handling:
+ * ---------------------------
+ * // Create an exception handler
+ * val handler = CoroutineExceptionHandler { context, exception ->
+ *     println("Caught exception: ${exception.message}")
+ *     println("In coroutine: ${context[CoroutineName]?.name}")
+ * }
+ *
+ * // Use the handler in the context
+ * viewModelScope.launch(Dispatchers.IO + CoroutineName("ErrorProne") + handler) {
+ *     throw RuntimeException("Something went wrong")
+ *     // Will be caught by handler, not crash the app
+ * }
+ *
+ * Custom Context Elements
+ * ---------------------
+ * - Create by implementing CoroutineContext.Element interface
+ * - Must define a unique Key
+ * - Used for custom metadata or behavior
+ *
+ * Example - Custom Context Element:
+ * ------------------------------
+ * // Define a custom context element
+ * class RequestId(val id: String) : CoroutineContext.Element {
+ *     // Define a companion object Key
+ *     companion object Key : CoroutineContext.Key<RequestId>
+ *
+ *     // Implement the key property
+ *     override val key: CoroutineContext.Key<RequestId> = Key
+ * }
+ *
+ * // Using the custom element
+ * viewModelScope.launch(Dispatchers.IO + RequestId("user-123")) {
+ *     // Access the request ID from context
+ *     val requestId = coroutineContext[RequestId]?.id
+ *     println("Processing request: $requestId")
+ * }
+ *
+ * Coroutine Contexts in Jetpack Compose
+ * -----------------------------------
+ * - Compose has its own scope management utilities
+ * - Contexts still work the same way but integrated with Compose lifecycle
+ * - Main context utilities: LaunchedEffect, rememberCoroutineScope, rememberUpdatedState
+ *
+ * Example - LaunchedEffect with Context:
+ * -----------------------------------
+ * @Composable
+ * fun NetworkImage(url: String) {
+ *     var bitmap by remember { mutableStateOf<ImageBitmap?>(null) }
+ *     var loading by remember { mutableStateOf(true) }
+ *
+ *     // Launch with custom context (IO dispatcher + name)
+ *     LaunchedEffect(key1 = url, key2 = Unit) {
+ *         val customContext = Dispatchers.IO + CoroutineName("ImageLoader")
+ *
+ *         withContext(customContext) {
+ *             try {
+ *                 val result = loadNetworkImage(url)
+ *                 // Switch to Main dispatcher for UI update
+ *                 withContext(Dispatchers.Main) {
+ *                     bitmap = result
+ *                     loading = false
+ *                 }
+ *             } catch (e: Exception) {
+ *                 withContext(Dispatchers.Main) {
+ *                     loading = false
+ *                 }
+ *             }
+ *         }
+ *     }
+ *
+ *     if (loading) {
+ *         CircularProgressIndicator()
+ *     } else {
+ *         bitmap?.let { Image(bitmap = it, contentDescription = null) }
+ *     }
+ * }
+ *
+ * Example - rememberCoroutineScope with Context:
+ * -------------------------------------------
+ * @Composable
+ * fun DataLoadingButton(
+ *     onLoad: suspend () -> Data,
+ *     onDisplay: (Data) -> Unit
+ * ) {
+ *     // Remember a coroutine scope tied to this composition
+ *     val scope = rememberCoroutineScope()
+ *
+ *     Button(onClick = {
+ *         // Create a custom context for this operation
+ *         val loadingContext = Dispatchers.IO + CoroutineName("DataLoader") +
+ *                 CoroutineExceptionHandler { _, exception ->
+ *                     Log.e("DataLoader", "Error loading data", exception)
+ *                 }
+ *
+ *         // Launch with the custom context
+ *         scope.launch(loadingContext) {
+ *             val data = onLoad()
+ *             // Switch to Main context for UI updates
+ *             withContext(Dispatchers.Main) {
+ *                 onDisplay(data)
+ *             }
+ *         }
+ *     }) {
+ *         Text("Load Data")
+ *     }
+ * }
+ *
+ * Context in Compose Side Effects
+ * ----------------------------
+ * - Context switching is important for performance in Compose
+ * - Main thread should only handle UI operations
+ * - Heavy work should be done on appropriate dispatchers
+ *
+ * Example - Appropriate Context in produceState:
+ * -------------------------------------------
+ * @Composable
+ * fun UserProfile(userId: String) {
+ *     // produceState runs a coroutine that updates state when the result is ready
+ *     val userState = produceState<Result<User>>(
+ *         initialValue = Result.Loading,
+ *         key1 = userId
+ *     ) {
+ *         value = Result.Loading
+ *
+ *         // Use IO dispatcher for network call
+ *         value = withContext(Dispatchers.IO) {
+ *             try {
+ *                 val user = userRepository.getUser(userId)
+ *                 Result.Success(user)
+ *             } catch (e: Exception) {
+ *                 Result.Error(e)
+ *             }
+ *         }
+ *     }
+ *
+ *     // Display based on state
+ *     when (val state = userState.value) {
+ *         is Result.Loading -> LoadingIndicator()
+ *         is Result.Success -> UserInfo(user = state.data)
+ *         is Result.Error -> ErrorMessage(error = state.exception)
+ *     }
+ * }
+ *
+ * Complex Example - Mixing Contexts in a Compose Flow:
+ * -------------------------------------------------
+ * @Composable
+ * fun SearchScreen(searchViewModel: SearchViewModel) {
+ *     val scope = rememberCoroutineScope()
+ *     var searchText by remember { mutableStateOf("") }
+ *     val searchResults by searchViewModel.searchResults.collectAsState()
+ *
+ *     Column {
+ *         TextField(
+ *             value = searchText,
+ *             onValueChange = { newText ->
+ *                 searchText = newText
+ *                 // Use Default dispatcher for search processing
+ *                 scope.launch(Dispatchers.Default + CoroutineName("Search")) {
+ *                     searchViewModel.performSearch(newText)
+ *                 }
+ *             },
+ *             label = { Text("Search") }
+ *         )
+ *
+ *         // Handle initial data loading with LaunchedEffect
+ *         LaunchedEffect(Unit) {
+ *             withContext(Dispatchers.IO) {
+ *                 searchViewModel.loadInitialData()
+ *             }
+ *         }
+ *
+ *         // Display search results
+ *         SearchResults(results = searchResults)
+ *
+ *         // Load additional resources if needed
+ *         LaunchedEffect(searchResults) {
+ *             if (searchResults.isNotEmpty()) {
+ *                 withContext(Dispatchers.IO) {
+ *                     searchViewModel.loadAdditionalResourcesForResults()
+ *                 }
+ *             }
+ *         }
+ *     }
+ * }
+ *
+ * Best Practices for Contexts in Compose
+ * ------------------------------------
+ * - Use appropriate context for the work (IO for network/disk, Default for computation)
+ * - Don't block the Main thread - use withContext for background work
+ * - Be mindful of context switching overhead, especially in critical UI paths
+ * - Use named coroutines (CoroutineName) for easier debugging in complex compositions
+ * - Remember that Compose's recomposition can cause coroutines to be restarted or canceled
+ *
+ * Example - Proper Context Management in ViewModel Used with Compose:
+ * ----------------------------------------------------------------
+ * class UserViewModel : ViewModel() {
+ *     private val _userState = MutableStateFlow<UserState>(UserState.Loading)
+ *     val userState: StateFlow<UserState> = _userState
+ *
+ *     fun loadUser(userId: String) {
+ *         viewModelScope.launch {
+ *             _userState.value = UserState.Loading
+ *
+ *             try {
+ *                 // Use IO dispatcher for network operations
+ *                 val user = withContext(Dispatchers.IO + CoroutineName("UserFetch")) {
+ *                     userRepository.getUser(userId)
+ *                 }
+ *
+ *                 // Use Default for data processing
+ *                 val enrichedUser = withContext(Dispatchers.Default) {
+ *                     enrichUserData(user)
+ *                 }
+ *
+ *                 _userState.value = UserState.Success(enrichedUser)
+ *             } catch (e: Exception) {
+ *                 _userState.value = UserState.Error(e)
+ *             }
+ *         }
+ *     }
+ *
+ *     // Then in Compose UI:
+ *     // @Composable
+ *     // fun UserScreen(viewModel: UserViewModel) {
+ *     //     val userState by viewModel.userState.collectAsState()
+ *     //
+ *     //     LaunchedEffect(Unit) {
+ *     //         viewModel.loadUser("123")
+ *     //     }
+ *     //
+ *     //     // Handle UI based on state
+ *     // }
+ * }
+ */

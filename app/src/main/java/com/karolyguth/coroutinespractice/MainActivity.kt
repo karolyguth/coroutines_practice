@@ -13,16 +13,30 @@ import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.lang.Thread.sleep
+import kotlin.system.measureTimeMillis
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
 
-        GlobalScope.launch(Dispatchers.Main) {
-            delay(1000)
-            sleep(5000)
+        val threads = hashMapOf<Long, String>()
+        val job = GlobalScope.launch(Dispatchers.Default) {
+            repeat(100) {
+                launch {
+                    threads[Thread.currentThread().id] = Thread.currentThread().name
+                    Thread.sleep(1000)
+                }
+            }
         }
+
+        GlobalScope.launch {
+            val timeMilis = measureTimeMillis {
+                job.join()
+            }
+            println("Launched ${threads.size} threads in $timeMilis ms")
+        }
+
 
         setContent {
             CoroutinesPracticeTheme {

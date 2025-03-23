@@ -1,0 +1,242 @@
+/**
+ * IO and Default Dispatchers in Kotlin Coroutines
+ *
+ * =============================
+ *
+ * Understanding Dispatchers.IO and Dispatchers.Default
+ * --------------------------------------------------
+ * - Dispatchers determine what thread(s) a coroutine runs on
+ * - Dispatchers.IO and Dispatchers.Default are the most commonly used background dispatchers
+ * - Both run on background threads but are optimized for different workloads
+ * - They share a common thread pool but have different configurations
+ *
+ * Dispatchers.Default: Optimized for CPU-bound work
+ * ----------------------------------------------
+ * - Designed for CPU-intensive tasks that perform computations
+ * - Thread pool size is equal to the number of CPU cores (but at least 2)
+ * - Uses a limited number of threads to avoid excessive context switching
+ * - Fair scheduling between tasks
+ *
+ * Example - CPU-intensive tasks with Default dispatcher:
+ * ---------------------------------------------------
+ * suspend fun processLargeData(data: List<DataPoint>): Results {
+ *     return withContext(Dispatchers.Default) {
+ *         // CPU-intensive operations:
+ *         val filtered = data.filter { it.isValid() }
+ *         val transformed = filtered.map { transform(it) }
+ *         val aggregated = transformed.groupBy { it.category }
+ *             .mapValues { it.value.sum() }
+ *
+ *         Results(aggregated)
+ *     }
+ * }
+ *
+ * Dispatchers.IO: Optimized for I/O-bound work
+ * -----------------------------------------
+ * - Designed for I/O operations (network, disk, database)
+ * - Has a much larger thread pool (default 64 threads)
+ * - Optimized for operations that spend most time waiting
+ * - Can create more threads as needed up to the limit
+ * - Allows many concurrent operations that don't use CPU heavily
+ *
+ * Example - I/O operations with IO dispatcher:
+ * -----------------------------------------
+ * suspend fun loadUserProfile(userId: String): User {
+ *     return withContext(Dispatchers.IO) {
+ *         // I/O operations:
+ *         val userData = userApi.fetchUser(userId)
+ *         val savedPreferences = prefsStorage.loadPreferences(userId)
+ *         val recentActivity = database.getRecentActivity(userId)
+ *
+ *         User(userData, savedPreferences, recentActivity)
+ *     }
+ * }
+ *
+ * When to Use Each Dispatcher
+ * -------------------------
+ * - Use Dispatchers.Default for:
+ *   - Complex calculations
+ *   - Large collections processing
+ *   - JSON parsing of large payloads
+ *   - Image processing
+ *   - Any computation-heavy work
+ *
+ * - Use Dispatchers.IO for:
+ *   - Network requests
+ *   - File operations
+ *   - Database queries
+ *   - SharedPreferences operations
+ *   - Any operation where threads spend time waiting
+ *
+ * Under the Hood: Shared Thread Pool
+ * --------------------------------
+ * - Both dispatchers share the JVM's common fork-join pool
+ * - Dispatchers.Default uses threads directly from this pool
+ * - Dispatchers.IO limits itself to a max of 64 threads (by default)
+ * - This means Dispatchers.IO can use up to 64 threads, even if your CPU has fewer cores
+ *
+ * Example - Mixed workload using both dispatchers:
+ * ---------------------------------------------
+ * suspend fun processDashboardData(): DashboardModel {
+ *     return coroutineScope {
+ *         // Load data using IO dispatcher
+ *         val dataDeferred = async(Dispatchers.IO) {
+ *             api.fetchDashboardData()
+ *         }
+ *
+ *         // While data is loading, prepare UI models using Default dispatcher
+ *         val uiConfigDeferred = async(Dispatchers.Default) {
+ *             prepareUIConfiguration()
+ *         }
+ *
+ *         // Combine results
+ *         val data = dataDeferred.await()
+ *         val uiConfig = uiConfigDeferred.await()
+ *
+ *         // Process the loaded data (CPU-intensive)
+ *         val processedData = withContext(Dispatchers.Default) {
+ *             processData(data)
+ *         }
+ *
+ *         DashboardModel(processedData, uiConfig)
+ *     }
+ * }
+ *
+ * Performance Considerations
+ * ------------------------
+ * - Context switching between dispatchers has overhead
+ * - Large number of concurrent IO tasks can exhaust the thread pool
+ * - Very short tasks might not benefit from switching dispatchers
+ * - Small data processing might be faster on IO if already there
+ *
+ * Best Practices
+ * ------------
+ * - Choose the right dispatcher for the work being performed
+ * - Don't switch dispatchers unnecessarily for small operations
+ * - For mixed operations, use the dispatcher appropriate for the most intensive part
+ * - Always keep UI operations on Dispatchers.Main
+ * - Consider using a custom dispatcher for specialized needs
+ *
+ * Example - Efficient dispatcher usage:
+ * ----------------------------------
+ * suspend fun loadAndProcessData(): ProcessedData {
+ *     // Start with IO for network call
+ *     return withContext(Dispatchers.IO) {
+ *         val rawData = api.fetchData()
+ *
+ *         // For heavy processing, switch to Default
+ *         val processedData = if (rawData.isLarge()) {
+ *             withContext(Dispatchers.Default) {
+ *                 processLargeData(rawData)
+ *             }
+ *         } else {
+ *             // For small data, avoid dispatcher switch
+ *             processSmallData(rawData)
+ *         }
+ *
+ *         // Continue with IO operations
+ *         database.saveProcessedData(processedData)
+ *         processedData
+ *     }
+ * }
+ *
+ * Creating Custom Dispatchers
+ * -------------------------
+ * - For specialized needs, you can create custom dispatchers
+ * - Useful when default dispatchers don't provide the right balance
+ *
+ * Example - Custom dispatcher for specific workloads:
+ * ------------------------------------------------
+ * // Create a custom dispatcher with a fixed thread pool
+ * val DatabaseDispatcher = Dispatchers.IO
+ *     .limitedParallelism(4) // Limit to 4 concurrent operations
+ *
+ * // Using the custom dispatcher
+ * suspend fun performDatabaseOperations() {
+ *     withContext(DatabaseDispatcher) {
+ *         // Database operations that should be limited
+ *         // to prevent connection pool exhaustion
+ *         database.executeQuery(...)
+ *     }
+ * }
+ *
+ * Testing with Dispatchers
+ * ----------------------
+ * - Default and IO dispatchers use real threads, making tests unpredictable
+ * - Use TestDispatcher or StandardTestDispatcher for testing
+ * - Replace dispatchers in tests with test versions
+ *
+ * Example - Testing code that uses dispatchers:
+ * ------------------------------------------
+ * class UserRepositoryTest {
+ *     private val testDispatcher = StandardTestDispatcher()
+ *     private lateinit var repository: UserRepository
+ *
+ *     @Before
+ *     fun setup() {
+ *         Dispatchers.setMain(testDispatcher) // Replace Main dispatcher
+ *         repository = UserRepository(testDispatcher) // Inject for IO/Default
+ *     }
+ *
+ *     @Test
+ *     fun `fetchUser returns user data`() = runTest(testDispatcher) {
+ *         val user = repository.fetchUser("123")
+ *         assertEquals("John", user.name)
+ *     }
+ *
+ *     @After
+ *     fun tearDown() {
+ *         Dispatchers.resetMain()
+ *     }
+ * }
+ *
+ * Dispatchers in Jetpack Compose
+ * ----------------------------
+ * - Compose runs on Dispatchers.Main by default
+ * - Context switching needed for background operations
+ * - Same principles apply, but with Compose-specific patterns
+ *
+ * Example - Using dispatchers in Compose:
+ * ------------------------------------
+ * @Composable
+ * fun UserProfile(userId: String, viewModel: UserViewModel) {
+ *     val scope = rememberCoroutineScope()
+ *     var user by remember { mutableStateOf<User?>(null) }
+ *     var loading by remember { mutableStateOf(true) }
+ *
+ *     LaunchedEffect(userId) {
+ *         // Switch to IO for network/database
+ *         withContext(Dispatchers.IO) {
+ *             try {
+ *                 val userData = userRepository.getUser(userId)
+ *
+ *                 // Switch to Default for CPU-intensive processing
+ *                 val processedUser = withContext(Dispatchers.Default) {
+ *                     processUserData(userData)
+ *                 }
+ *
+ *                 // Back on Main thread for UI update (automatic in Compose)
+ *                 user = processedUser
+ *                 loading = false
+ *             } catch (e: Exception) {
+ *                 loading = false
+ *             }
+ *         }
+ *     }
+ *
+ *     if (loading) {
+ *         CircularProgressIndicator()
+ *     } else {
+ *         user?.let { UserProfileContent(it) }
+ *     }
+ * }
+ *
+ * Summary
+ * ------
+ * - Dispatchers.Default: Use for CPU-intensive computations (limited to CPU core count)
+ * - Dispatchers.IO: Use for I/O operations (larger thread pool for concurrent operations)
+ * - Both share the same underlying thread pool but with different configurations
+ * - Choose the right dispatcher for optimal performance
+ * - Avoid unnecessary context switching for small operations
+ * - For testing, use test dispatchers instead of actual implementations
+ */
