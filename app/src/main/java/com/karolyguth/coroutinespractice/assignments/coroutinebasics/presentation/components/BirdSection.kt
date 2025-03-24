@@ -9,10 +9,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontStyle
@@ -22,17 +20,24 @@ import androidx.compose.ui.unit.dp
 import com.karolyguth.coroutinespractice.assignments.coroutinebasics.model.Bird
 import com.karolyguth.coroutinespractice.assignments.coroutinebasics.model.BirdOrdialNumber
 import com.karolyguth.coroutinespractice.assignments.coroutinebasics.model.BirdSound
+import kotlinx.coroutines.CoroutineName
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.job
 import kotlinx.coroutines.launch
 
 @Composable
 fun BirdSection(modifier: Modifier = Modifier, bird: Bird?) {
 
     LaunchedEffect(key1 = bird) {
-        val job1 = launch {
-            while (true) {
-                bird?.sound?.let { Log.d("BirdSection", it.name) }
-                delay(1000)
+
+        if (bird != null) {
+            val coroutineScope = this
+            launch {
+                printBirdInfo(bird, coroutineScope)
             }
         }
     }
@@ -89,4 +94,16 @@ fun BirdSectionPreview() {
             sound = BirdSound.CAW
         )
     )
+}
+
+suspend fun printBirdInfo(bird: Bird, scope: CoroutineScope) {
+        scope.launch(CoroutineName(bird.name)) {
+            val coroutineName = coroutineContext[CoroutineName]?.name
+            while (true) {
+                Log.d("BirdSection", bird.sound.name)
+                Log.d("BirdSection", "Coroutine name: $coroutineName")
+                delay(1000)
+
+            }
+        }
 }

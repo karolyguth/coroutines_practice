@@ -5,17 +5,17 @@ object BirdFactory {
         return when(ordialNumber) {
             BirdOrdialNumber.FIRST -> Bird(
                 number = BirdOrdialNumber.FIRST,
-                name = "Bird 1",
+                name = "Tweety",
                 sound = BirdSound.CAW
             )
             BirdOrdialNumber.SECOND -> Bird(
                 number = BirdOrdialNumber.SECOND,
-                name = "Bird 2",
+                name = "Zazu",
                 sound = BirdSound.COO
             )
             BirdOrdialNumber.THIRD -> Bird(
                 number = BirdOrdialNumber.THIRD,
-                name = "Bird 3",
+                name = "Woodstock",
                 sound = BirdSound.CHIRP
             )
 
