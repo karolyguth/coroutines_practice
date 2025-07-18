@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "142836030064",
+    "project_id": "practice-project-41883",
+    "storage_bucket": "practice-project-41883.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:142836030064:android:965029e9d1db00108972b5",
+        "android_client_info": {
+          "package_name": "com.karolyguth.coroutinespractice"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyD7NH1dml4GaAEy0797_EBj25RJwu-DePw"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

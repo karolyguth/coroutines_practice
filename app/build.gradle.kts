@@ -5,6 +5,7 @@ plugins {
     alias(libs.plugins.ksp)
     alias(libs.plugins.room)
     alias(libs.plugins.kotlin.serialization)
+    alias(libs.plugins.google.services)
 }
 
 android {
@@ -81,5 +82,8 @@ dependencies {
     debugImplementation(libs.androidx.ui.tooling)
     debugImplementation(libs.androidx.ui.test.manifest)
     implementation(libs.androidx.lifecycle.viewmodel.compose)
+
+    implementation(platform(libs.firebase.bom))
+    implementation(libs.firebase.analytics)
 
 }
