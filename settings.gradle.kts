@@ -21,4 +21,4 @@ dependencyResolutionManagement {
 
 rootProject.name = "Coroutines Practice"
 include(":app")
- 
+include(":app:login")
