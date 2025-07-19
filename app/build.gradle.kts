@@ -60,6 +60,8 @@ room {
 
 dependencies {
 
+    implementation(project(":app:login"))
+
     implementation(libs.bundles.ktor)
 
     implementation(libs.room.ktx)
@@ -82,6 +84,7 @@ dependencies {
     debugImplementation(libs.androidx.ui.tooling)
     debugImplementation(libs.androidx.ui.test.manifest)
     implementation(libs.androidx.lifecycle.viewmodel.compose)
+    implementation(libs.coil.compose)
 
     implementation(platform(libs.firebase.bom))
     implementation(libs.firebase.analytics)
