@@ -22,11 +22,7 @@ import com.karolyguth.coroutinespractice.assignments.coroutinebasics.model.BirdO
 import com.karolyguth.coroutinespractice.assignments.coroutinebasics.model.BirdSound
 import kotlinx.coroutines.CoroutineName
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.Job
-import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.job
 import kotlinx.coroutines.launch
 
 @Composable
